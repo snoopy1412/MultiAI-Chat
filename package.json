@@ -1,0 +1,20 @@
+{
+  "name": "multiai-chat",
+  "version": "1.0.0",
+  "description": "MultiAI Chat - Send messages to multiple AI chatbots simultaneously and compare responses",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "simple": "node simple-cli.js",
+    "dev": "node --watch index.js",
+    "web": "node web-server.js"
+  },
+  "keywords": ["ai", "chatbot", "automation", "puppeteer"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^21.6.1",
+    "express": "^4.18.2",
+    "readline": "^1.3.0"
+  }
+}

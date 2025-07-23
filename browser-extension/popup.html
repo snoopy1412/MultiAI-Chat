@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI聊天聚合器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            width: 400px;
+            min-height: 500px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 20px;
+        }
+        
+        .input-section {
+            margin-bottom: 20px;
+        }
+        
+        .input-label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        #messageInput {
+            width: 100%;
+            min-height: 80px;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+        
+        #messageInput:focus {
+            border-color: #667eea;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .sites-section {
+            margin-bottom: 20px;
+        }
+        
+        .sites-list {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e1e5e9;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .site-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 15px;
+            border-bottom: 1px solid #f1f3f4;
+        }
+        
+        .site-item:last-child {
+            border-bottom: none;
+        }
+        
+        .site-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .site-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: white;
+        }
+        
+        .site-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .site-status {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        
+        .status-ready {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-not-found {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .results-section {
+            margin-top: 20px;
+        }
+        
+        .result-item {
+            background: white;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-left: 4px solid #ddd;
+            font-size: 13px;
+        }
+        
+        .result-success {
+            border-left-color: #28a745;
+            background: #f8fff9;
+        }
+        
+        .result-error {
+            border-left-color: #dc3545;
+            background: #fff8f8;
+        }
+        
+        .result-site {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .result-message {
+            color: #666;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 15px;
+            border-top: 1px solid #e1e5e9;
+            background: white;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🤖 MultiAI Chat</h1>
+        <p>一次输入，多AI对比</p>
+    </div>
+    
+    <div class="content">
+        <div class="input-section">
+            <div class="input-label">输入消息:</div>
+            <textarea id="messageInput" placeholder="输入您想问的问题..."></textarea>
+        </div>
+        
+        <div class="actions">
+            <button id="sendBtn" class="btn btn-primary">发送到所有AI</button>
+            <button id="refreshBtn" class="btn btn-secondary">刷新状态</button>
+        </div>
+        
+        <div class="sites-section">
+            <div class="input-label">AI网站状态:</div>
+            <div class="sites-list" id="sitesList">
+                <!-- 网站列表将通过JavaScript动态生成 -->
+            </div>
+        </div>
+        
+        <div class="results-section" id="resultsSection" style="display: none;">
+            <div class="input-label">发送结果:</div>
+            <div id="resultsList"></div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        Chrome扩展 v1.0.0
+    </div>
+    
+    <script src="popup.js"></script>
+</body>
+</html>

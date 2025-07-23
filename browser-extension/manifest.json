@@ -1,0 +1,53 @@
+{
+  "manifest_version": 3,
+  "name": "MultiAI Chat",
+  "version": "1.0.0",
+  "description": "Send messages to multiple AI chatbots simultaneously and compare their responses",
+  
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabs",
+    "scripting"
+  ],
+  
+  "host_permissions": [
+    "https://chat.openai.com/*",
+    "https://claude.ai/*",
+    "https://gemini.google.com/*",
+    "https://www.kimi.com/*",
+    "https://kimi.moonshot.cn/*",
+    "https://chat.qwen.ai/*",
+    "https://qianwen.aliyun.com/*",
+    "https://chat.deepseek.com/*",
+    "https://yiyan.baidu.com/*"
+  ],
+  
+  "background": {
+    "service_worker": "background.js"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chat.openai.com/*",
+        "https://claude.ai/*", 
+        "https://gemini.google.com/*",
+        "https://www.kimi.com/*",
+        "https://kimi.moonshot.cn/*",
+        "https://chat.qwen.ai/*",
+        "https://qianwen.aliyun.com/*",
+        "https://chat.deepseek.com/*",
+        "https://yiyan.baidu.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "MultiAI Chat"
+  },
+  
+}

@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 AI聊天门户</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 36px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .header p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        
+        .input-section {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .message-input {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        #messageInput {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e1e1e1;
+            border-radius: 12px;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s;
+        }
+        
+        #messageInput:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .ai-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            padding: 30px;
+        }
+        
+        .ai-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border: 1px solid #e9ecef;
+            transition: all 0.3s;
+        }
+        
+        .ai-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+        
+        .ai-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .ai-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-right: 15px;
+            color: white;
+        }
+        
+        .ai-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .ai-description {
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        
+        .ai-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .status {
+            padding: 15px;
+            margin: 20px 30px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-info {
+            background: #cce6ff;
+            color: #0066cc;
+            border: 1px solid #99d6ff;
+        }
+        
+        .instructions {
+            background: #f8f9fa;
+            padding: 30px;
+            margin: 20px 30px;
+            border-radius: 15px;
+            border-left: 5px solid #667eea;
+        }
+        
+        .instructions h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .instructions ol {
+            color: #666;
+            line-height: 1.8;
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        
+        /* AI特色颜色 */
+        .chatgpt { background: #10a37f; }
+        .claude { background: #ff6b35; }
+        .gemini { background: #4285f4; }
+        .kimi { background: #ff6b35; }
+        .qwen { background: #1976d2; }
+        .deepseek { background: #2e7d32; }
+        .yiyan { background: #e91e63; }
+        
+        @media (max-width: 768px) {
+            .ai-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .message-input {
+                flex-direction: column;
+            }
+            
+            .ai-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI聊天门户</h1>
+            <p>一次输入，多AI对比 - 智能聊天聚合平台</p>
+        </div>
+        
+        <div class="input-section">
+            <div class="message-input">
+                <input type="text" id="messageInput" placeholder="输入您的问题，然后点击复制按钮...">
+                <button class="btn btn-primary" onclick="copyMessage()">📋 复制消息</button>
+                <button class="btn btn-secondary" onclick="openAllSites()">🚀 打开所有网站</button>
+            </div>
+            
+            <div id="status" class="status status-info" style="display: none;">
+                消息已复制到剪贴板！请在各个AI网站中粘贴。
+            </div>
+        </div>
+        
+        <div class="ai-grid">
+            <div class="ai-card">
+                <div class="ai-header">
+                    <div class="ai-icon chatgpt">🤖</div>
+                    <div class="ai-name">ChatGPT</div>
+                </div>
+                <div class="ai-description">
+                    OpenAI开发的强大对话AI，擅长创意写作、代码编程和问题解答
+                </div>
+                <div class="ai-actions">
+                    <a href="https://chat.openai.com/" target="_blank" class="btn btn-primary">打开ChatGPT</a>
+                    <button class="btn btn-success" onclick="pasteAndOpen('https://chat.openai.com/')">复制并打开</button>
+                </div>
+            </div>
+            
+            <div class="ai-card">
+                <div class="ai-header">
+                    <div class="ai-icon claude">🧠</div>
+                    <div class="ai-name">Claude</div>
+                </div>
+                <div class="ai-description">
+                    Anthropic的AI助手，注重安全性和有用性，擅长长文本分析
+                </div>
+                <div class="ai-actions">
+                    <a href="https://claude.ai/" target="_blank" class="btn btn-primary">打开Claude</a>
+                    <button class="btn btn-success" onclick="pasteAndOpen('https://claude.ai/')">复制并打开</button>
+                </div>
+            </div>
+            
+            <div class="ai-card">
+                <div class="ai-header">
+                    <div class="ai-icon gemini">✨</div>
+                    <div class="ai-name">Gemini</div>
+                </div>
+                <div class="ai-description">
+                    Google的多模态AI，支持文本、图像和代码，整合搜索能力
+                </div>
+                <div class="ai-actions">
+                    <a href="https://gemini.google.com/" target="_blank" class="btn btn-primary">打开Gemini</a>
+                    <button class="btn btn-success" onclick="pasteAndOpen('https://gemini.google.com/')">复制并打开</button>
+                </div>
+            </div>
+            
+            <div class="ai-card">
+                <div class="ai-header">
+                    <div class="ai-icon kimi">🌙</div>
+                    <div class="ai-name">Kimi</div>
+                </div>
+                <div class="ai-description">
+                    月之暗面开发的AI助手，支持超长文本处理和多轮对话
+                </div>
+                <div class="ai-actions">
+                    <a href="https://kimi.moonshot.cn/" target="_blank" class="btn btn-primary">打开Kimi</a>
+                    <button class="btn btn-success" onclick="pasteAndOpen('https://kimi.moonshot.cn/')">复制并打开</button>
+                </div>
+            </div>
+            
+            <div class="ai-card">
+                <div class="ai-header">
+                    <div class="ai-icon qwen">🔥</div>
+                    <div class="ai-name">通义千问</div>
+                </div>
+                <div class="ai-description">
+                    阿里云开发的大语言模型，擅长中文理解和多领域知识问答
+                </div>
+                <div class="ai-actions">
+                    <a href="https://qianwen.aliyun.com/" target="_blank" class="btn btn-primary">打开千问</a>
+                    <button class="btn btn-success" onclick="pasteAndOpen('https://qianwen.aliyun.com/')">复制并打开</button>
+                </div>
+            </div>
+            
+            <div class="ai-card">
+                <div class="ai-header">
+                    <div class="ai-icon deepseek">🚀</div>
+                    <div class="ai-name">DeepSeek</div>
+                </div>
+                <div class="ai-description">
+                    深度求索开发的AI模型，在代码生成和推理能力方面表现优秀
+                </div>
+                <div class="ai-actions">
+                    <a href="https://chat.deepseek.com/" target="_blank" class="btn btn-primary">打开DeepSeek</a>
+                    <button class="btn btn-success" onclick="pasteAndOpen('https://chat.deepseek.com/')">复制并打开</button>
+                </div>
+            </div>
+            
+            <div class="ai-card">
+                <div class="ai-header">
+                    <div class="ai-icon yiyan">💖</div>
+                    <div class="ai-name">文心一言</div>
+                </div>
+                <div class="ai-description">
+                    百度开发的对话式AI，基于文心大模型，中文能力突出
+                </div>
+                <div class="ai-actions">
+                    <a href="https://yiyan.baidu.com/" target="_blank" class="btn btn-primary">打开文心</a>
+                    <button class="btn btn-success" onclick="pasteAndOpen('https://yiyan.baidu.com/')">复制并打开</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3>📝 使用说明</h3>
+            <ol>
+                <li><strong>输入问题</strong>：在上方输入框中输入您想问的问题</li>
+                <li><strong>复制消息</strong>：点击"📋 复制消息"按钮，消息会自动复制到剪贴板</li>
+                <li><strong>打开AI网站</strong>：点击"🚀 打开所有网站"或单独打开各个AI网站</li>
+                <li><strong>粘贴发送</strong>：在每个AI网站的输入框中按 <kbd>Cmd+V</kbd> (Mac) 或 <kbd>Ctrl+V</kbd> (Windows) 粘贴</li>
+                <li><strong>对比回答</strong>：查看不同AI给出的回答，获得多样化的视角</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function copyMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (!message) {
+                alert('请先输入消息内容！');
+                return;
+            }
+            
+            // 复制到剪贴板
+            navigator.clipboard.writeText(message).then(() => {
+                showStatus('✅ 消息已复制到剪贴板！现在可以在各个AI网站中粘贴了。', 'success');
+            }).catch(() => {
+                // 备用方案
+                const textarea = document.createElement('textarea');
+                textarea.value = message;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showStatus('✅ 消息已复制到剪贴板！', 'success');
+            });
+        }
+        
+        function pasteAndOpen(url) {
+            copyMessage();
+            setTimeout(() => {
+                window.open(url, '_blank');
+            }, 500);
+        }
+        
+        function openAllSites() {
+            const sites = [
+                'https://chat.openai.com/',
+                'https://claude.ai/',
+                'https://gemini.google.com/',
+                'https://kimi.moonshot.cn/',
+                'https://qianwen.aliyun.com/',
+                'https://chat.deepseek.com/',
+                'https://yiyan.baidu.com/'
+            ];
+            
+            sites.forEach((url, index) => {
+                setTimeout(() => {
+                    window.open(url, '_blank');
+                }, index * 200); // 错开打开时间，避免浏览器阻止
+            });
+            
+            showStatus('🚀 正在打开所有AI网站...请稍候', 'info');
+        }
+        
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = 'status status-' + type;
+            statusEl.style.display = 'block';
+            
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 3000);
+        }
+        
+        // 回车键快捷复制
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                copyMessage();
+            }
+        });
+        
+        // 页面加载时的欢迎提示
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                showStatus('💡 提示：输入问题后点击复制，然后在各AI网站粘贴即可！', 'info');
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
