@@ -1,15 +1,15 @@
 class AIAggregatorPopup {
     constructor() {
         this.supportedSites = {
-            'chat.openai.com': { name: 'ChatGPT', icon: '🤖', color: '#10a37f' },
-            'claude.ai': { name: 'Claude', icon: '🧠', color: '#ff6b35' },
-            'gemini.google.com': { name: 'Gemini', icon: '✨', color: '#4285f4' },
-            'www.kimi.com': { name: 'Kimi', icon: '🌙', color: '#ff6b35' },
-            'kimi.moonshot.cn': { name: 'Kimi (旧版)', icon: '🌙', color: '#ff6b35' },
-            'chat.qwen.ai': { name: '通义千问', icon: '🔥', color: '#1976d2' },
-            'qianwen.aliyun.com': { name: '通义千问 (旧版)', icon: '🔥', color: '#1976d2' },
-            'chat.deepseek.com': { name: 'DeepSeek', icon: '🚀', color: '#2e7d32' },
-            'yiyan.baidu.com': { name: '文心一言', icon: '💖', color: '#e91e63' }
+            'chat.openai.com': { name: 'ChatGPT', icon: '🤖', color: '#10a37f', priority: 1 },
+            'claude.ai': { name: 'Claude', icon: '🧠', color: '#ff6b35', priority: 1 },
+            'gemini.google.com': { name: 'Gemini', icon: '✨', color: '#4285f4', priority: 1 },
+            'www.kimi.com': { name: 'Kimi', icon: '🌙', color: '#ff6b35', priority: 1, group: 'kimi' },
+            'kimi.moonshot.cn': { name: 'Kimi', icon: '🌙', color: '#ff6b35', priority: 2, group: 'kimi' },
+            'chat.qwen.ai': { name: '通义千问', icon: '🔥', color: '#1976d2', priority: 1, group: 'qwen' },
+            'qianwen.aliyun.com': { name: '通义千问', icon: '🔥', color: '#1976d2', priority: 2, group: 'qwen' },
+            'chat.deepseek.com': { name: 'DeepSeek', icon: '🚀', color: '#2e7d32', priority: 1 },
+            'yiyan.baidu.com': { name: '文心一言', icon: '💖', color: '#e91e63', priority: 1 }
         };
         
         this.activeSites = new Map();
@@ -58,19 +58,35 @@ class AIAggregatorPopup {
 
         try {
             const tabs = await chrome.tabs.query({});
+            const siteGroups = new Map(); // 按组分类网站
             
+            // 收集所有匹配的标签页
             for (const tab of tabs) {
                 const url = new URL(tab.url);
                 const hostname = url.hostname;
                 
                 if (this.supportedSites[hostname]) {
                     const siteInfo = this.supportedSites[hostname];
-                    const siteItem = this.createSiteItem(siteInfo, tab, 'loading');
-                    sitesList.appendChild(siteItem);
+                    const group = siteInfo.group || hostname; // 如果没有组，就用域名作为组
                     
-                    // 检查网站状态
-                    this.checkSiteStatus(tab, siteInfo, siteItem);
+                    if (!siteGroups.has(group)) {
+                        siteGroups.set(group, []);
+                    }
+                    siteGroups.get(group).push({ tab, siteInfo, hostname });
                 }
+            }
+            
+            // 对每个组，选择优先级最高的网站显示
+            for (const [group, sites] of siteGroups) {
+                // 按优先级排序，选择优先级最高的（数字最小的）
+                sites.sort((a, b) => a.siteInfo.priority - b.siteInfo.priority);
+                const bestSite = sites[0];
+                
+                const siteItem = this.createSiteItem(bestSite.siteInfo, bestSite.tab, 'loading');
+                sitesList.appendChild(siteItem);
+                
+                // 检查网站状态
+                this.checkSiteStatus(bestSite.tab, bestSite.siteInfo, siteItem);
             }
 
             if (sitesList.children.length === 0) {
@@ -120,9 +136,13 @@ class AIAggregatorPopup {
     }
 
     async checkSiteStatus(tab, siteInfo, siteItem) {
+        const statusElement = siteItem.querySelector(`#status-${tab.id}`);
+        
         try {
+            // 先等待一下确保content script加载完成
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
             const response = await chrome.tabs.sendMessage(tab.id, { type: 'CHECK_STATUS' });
-            const statusElement = siteItem.querySelector(`#status-${tab.id}`);
             
             if (response && response.success) {
                 statusElement.className = 'site-status status-ready';
@@ -133,10 +153,31 @@ class AIAggregatorPopup {
                 statusElement.innerHTML = this.getStatusText('not-found');
             }
         } catch (error) {
-            const statusElement = siteItem.querySelector(`#status-${tab.id}`);
-            statusElement.className = 'site-status status-not-found';
-            statusElement.innerHTML = this.getStatusText('not-found');
-            console.error(`检查 ${siteInfo.name} 状态失败:`, error);
+            // 如果连接失败，尝试重新注入content script
+            try {
+                console.log(`尝试重新注入content script到 ${siteInfo.name}`);
+                await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    files: ['content.js']
+                });
+                
+                // 等待一下再重试
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                const retryResponse = await chrome.tabs.sendMessage(tab.id, { type: 'CHECK_STATUS' });
+                
+                if (retryResponse && retryResponse.success) {
+                    statusElement.className = 'site-status status-ready';
+                    statusElement.innerHTML = this.getStatusText('ready');
+                    this.activeSites.set(tab.id, { ...siteInfo, tab });
+                } else {
+                    statusElement.className = 'site-status status-not-found';
+                    statusElement.innerHTML = this.getStatusText('not-found');
+                }
+            } catch (retryError) {
+                statusElement.className = 'site-status status-not-found';
+                statusElement.innerHTML = this.getStatusText('not-found');
+                console.error(`检查 ${siteInfo.name} 状态失败，重试也失败:`, retryError);
+            }
         }
     }
 
@@ -162,28 +203,55 @@ class AIAggregatorPopup {
             sendBtn.innerHTML = '<span class="spinner"></span> 发送中...';
             
             const results = [];
-            const promises = Array.from(this.activeSites.entries()).map(async ([tabId, siteInfo]) => {
-                try {
-                    const response = await chrome.tabs.sendMessage(tabId, {
-                        type: 'SEND_MESSAGE',
-                        text: message
-                    });
+            
+            // 重新获取当前活跃的网站，确保只向每组的最优网站发送
+            const tabs = await chrome.tabs.query({});
+            const siteGroups = new Map();
+            
+            for (const tab of tabs) {
+                const url = new URL(tab.url);
+                const hostname = url.hostname;
+                
+                if (this.supportedSites[hostname]) {
+                    const siteInfo = this.supportedSites[hostname];
+                    const group = siteInfo.group || hostname;
                     
-                    return {
-                        site: siteInfo.name,
-                        success: response.success,
-                        message: response.success ? '发送成功' : response.error,
-                        tabId
-                    };
-                } catch (error) {
-                    return {
-                        site: siteInfo.name,
-                        success: false,
-                        message: error.message,
-                        tabId
-                    };
+                    if (!siteGroups.has(group)) {
+                        siteGroups.set(group, []);
+                    }
+                    siteGroups.get(group).push({ tab, siteInfo, hostname });
                 }
-            });
+            }
+            
+            const promises = [];
+            for (const [group, sites] of siteGroups) {
+                // 选择优先级最高的网站
+                sites.sort((a, b) => a.siteInfo.priority - b.siteInfo.priority);
+                const bestSite = sites[0];
+                
+                promises.push((async () => {
+                    try {
+                        const response = await chrome.tabs.sendMessage(bestSite.tab.id, {
+                            type: 'SEND_MESSAGE',
+                            text: message
+                        });
+                        
+                        return {
+                            site: bestSite.siteInfo.name,
+                            success: response.success,
+                            message: response.success ? '发送成功' : response.error,
+                            tabId: bestSite.tab.id
+                        };
+                    } catch (error) {
+                        return {
+                            site: bestSite.siteInfo.name,
+                            success: false,
+                            message: error.message,
+                            tabId: bestSite.tab.id
+                        };
+                    }
+                })());
+            }
 
             const allResults = await Promise.all(promises);
             this.displayResults(allResults);

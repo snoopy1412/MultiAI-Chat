@@ -24,8 +24,8 @@ const AI_SITES = {
     'www.kimi.com': {
         name: 'Kimi',
         selectors: {
-            input: 'textarea[placeholder*="有什么可以帮"], textarea[placeholder*="请输入"], div[contenteditable="true"], .input-area textarea',
-            sendButton: 'button[aria-label*="发送消息"], button:has(svg), .send-button, button[type="submit"]'
+            input: '.chat-input-editor[contenteditable="true"], .chat-input-editor, [data-lexical-editor="true"], div[contenteditable="true"][role="textbox"], textarea, [role="textbox"]',
+            sendButton: 'button[aria-label*="发送"], button:has(svg), button[type="submit"], .send-button, button'
         }
     },
     'kimi.moonshot.cn': {
@@ -201,43 +201,76 @@ class AIAggregatorContent {
     async findInputElement() {
         const selectors = this.currentSite.selectors.input.split(', ');
         
+        console.log(`AI聚合器: 在 ${this.currentSite.name} 中查找输入框`);
+        console.log(`AI聚合器: 使用选择器:`, selectors);
+        
         for (const selector of selectors) {
             const elements = document.querySelectorAll(selector);
+            console.log(`AI聚合器: 选择器 "${selector}" 找到 ${elements.length} 个元素`);
+            
             for (const element of elements) {
                 if (this.isElementVisible(element) && !element.disabled) {
+                    console.log(`AI聚合器: 找到可用输入框:`, element);
                     return element;
                 }
             }
         }
 
         // 如果直接选择器找不到，尝试更广泛的搜索
-        const allTextAreas = document.querySelectorAll('textarea, [contenteditable="true"], input[type="text"]');
+        console.log(`AI聚合器: 直接选择器未找到，尝试通用搜索`);
+        const allTextAreas = document.querySelectorAll('textarea, [contenteditable="true"], input[type="text"], [role="textbox"]');
+        console.log(`AI聚合器: 通用搜索找到 ${allTextAreas.length} 个可能的输入元素`);
+        
         for (const element of allTextAreas) {
             if (this.isElementVisible(element) && !element.disabled) {
                 const rect = element.getBoundingClientRect();
-                if (rect.width > 100 && rect.height > 30) { // 大概是输入框的尺寸
+                console.log(`AI聚合器: 检查元素尺寸:`, rect.width, 'x', rect.height);
+                if (rect.width > 100 && rect.height > 20) { // 降低高度要求
+                    console.log(`AI聚合器: 通用搜索找到合适输入框:`, element);
                     return element;
                 }
             }
         }
 
+        console.log(`AI聚合器: 在 ${this.currentSite.name} 中未找到任何输入框`);
         return null;
     }
 
     async findSendButton() {
         const selectors = this.currentSite.selectors.sendButton.split(', ');
         
+        console.log(`AI聚合器: 在 ${this.currentSite.name} 中查找发送按钮`);
+        
         for (const selector of selectors) {
             const elements = document.querySelectorAll(selector);
+            console.log(`AI聚合器: 发送按钮选择器 "${selector}" 找到 ${elements.length} 个元素`);
+            
             for (const element of elements) {
                 if (this.isElementVisible(element) && !element.disabled) {
+                    console.log(`AI聚合器: 找到可用发送按钮:`, element);
                     return element;
+                }
+            }
+        }
+
+        // 特别针对Kimi查找发送按钮（可能在输入框附近）
+        if (this.currentSite.name === 'Kimi') {
+            const chatInput = document.querySelector('.chat-input');
+            if (chatInput) {
+                const nearbyButtons = chatInput.parentElement?.querySelectorAll('button') || [];
+                for (const button of nearbyButtons) {
+                    if (this.isElementVisible(button) && !button.disabled) {
+                        console.log(`AI聚合器: 在Kimi聊天输入区域找到按钮:`, button);
+                        return button;
+                    }
                 }
             }
         }
 
         // 尝试查找包含"发送"、"Send"等文字的按钮
         const buttons = document.querySelectorAll('button');
+        console.log(`AI聚合器: 通用搜索找到 ${buttons.length} 个按钮`);
+        
         for (const button of buttons) {
             const text = button.textContent?.toLowerCase();
             const ariaLabel = button.getAttribute('aria-label')?.toLowerCase();
@@ -245,25 +278,56 @@ class AIAggregatorContent {
             if ((text && (text.includes('send') || text.includes('发送') || text.includes('提交'))) ||
                 (ariaLabel && (ariaLabel.includes('send') || ariaLabel.includes('发送')))) {
                 if (this.isElementVisible(button) && !button.disabled) {
+                    console.log(`AI聚合器: 通过文本找到发送按钮:`, button);
                     return button;
                 }
             }
         }
 
+        console.log(`AI聚合器: 在 ${this.currentSite.name} 中未找到发送按钮`);
         return null;
     }
 
     async clearAndTypeMessage(element, text) {
         // 聚焦元素
         element.focus();
+        await this.wait(100);
         
         if (element.contentEditable === 'true') {
-            // 对于contenteditable元素
-            element.innerHTML = '';
-            element.textContent = text;
-            
-            // 触发input事件
-            element.dispatchEvent(new Event('input', { bubbles: true }));
+            // 特殊处理Kimi的Lexical编辑器
+            if (element.hasAttribute('data-lexical-editor')) {
+                // 清空内容
+                element.innerHTML = '<p><br></p>';
+                
+                // 创建文本节点并插入
+                const p = element.querySelector('p');
+                if (p) {
+                    p.innerHTML = '';
+                    p.textContent = text;
+                } else {
+                    element.innerHTML = `<p>${text}</p>`;
+                }
+                
+                // 触发多种事件
+                const events = ['input', 'textInput', 'keydown', 'keyup', 'change'];
+                events.forEach(eventType => {
+                    element.dispatchEvent(new Event(eventType, { bubbles: true }));
+                });
+                
+                // 模拟键盘输入事件
+                element.dispatchEvent(new KeyboardEvent('keydown', {
+                    key: 'a',
+                    bubbles: true
+                }));
+                
+            } else {
+                // 普通contenteditable元素
+                element.innerHTML = '';
+                element.textContent = text;
+                
+                // 触发input事件
+                element.dispatchEvent(new Event('input', { bubbles: true }));
+            }
         } else {
             // 对于textarea和input元素
             element.value = '';
@@ -274,6 +338,9 @@ class AIAggregatorContent {
                 element.dispatchEvent(new Event(eventType, { bubbles: true }));
             });
         }
+        
+        // 等待一下确保输入完成
+        await this.wait(200);
     }
 
     isElementVisible(element) {
@@ -300,10 +367,21 @@ class AIAggregatorContent {
 }
 
 // 初始化内容脚本
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
+function initializeAIAggregator() {
+    try {
+        console.log('AI聚合器: 开始初始化内容脚本');
         new AIAggregatorContent();
-    });
-} else {
-    new AIAggregatorContent();
+    } catch (error) {
+        console.error('AI聚合器: 初始化失败', error);
+    }
 }
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeAIAggregator);
+} else {
+    initializeAIAggregator();
+}
+
+// 确保脚本已加载的标记
+window.aiAggregatorLoaded = true;
+console.log('AI聚合器: Content script 已加载');
